@@ -1,66 +1,66 @@
 #include <Arduino.h>
 
-const int touchPin = 2;   // Pin connected to the sound button
-const int touchPinOctaveOne = 3;   // Pin connected to the octave button
-const int touchPinOctaveTwo = 4;   // Pin connected to the octave button
-const int touchPinOctaveThree = 5;   // Pin connected to the octave button
-const int buzzerPin = 11;  // Pin connected to the buzzer
-int octive = 1;  // Current octave (1, 2, or 3)
-bool isOctiveChanged = false; // Flag to track octave button state
+const int pins[] = {22, 23, 26, 27, 30, 31, 34, 35, 38, 39, 42, 43}; // A–G#
+const int touchPinOctave = 2;
+const int buzzerPin = 11;
+bool lastOctButton = false;
+int baseFreqs[] = {
+  440, // A
+  466, // Ab
+  494, // B
+  523, // Bb
+  554, // C
+  587, // D
+  622, // Dd
+  659, // E
+  698, // F
+  740, // Fb
+  784, // G
+  831  // Gb
+};
+bool keyPressed[13] = {false};
+int octave = 1;
 
 void setup() {
-  pinMode(touchPinOctaveOne, INPUT);     // Octave button as input
-  pinMode(touchPinOctaveTwo, INPUT);
-  pinMode(touchPinOctaveThree, INPUT);
-  pinMode(touchPin, INPUT);    // Sensor as input
-  pinMode(buzzerPin, OUTPUT);  // Buzzer as output
+  pinMode(touchPinOctave, INPUT_PULLUP);
+  for (int i = 0; i < 12; i++) {
+    pinMode(pins[i], INPUT_PULLUP);
+  }
+  pinMode(buzzerPin, OUTPUT);
   Serial.begin(115200);
 }
 
 void loop() {
-  //If statement to change octave
- if (digitalRead(touchPinOctaveThree) == HIGH ) {
-    if(!isOctiveChanged && octive < 3){ 
-      octive++;
-      isOctiveChanged = true;
+  // Press = LOW
+  if (digitalRead(touchPinOctave) == LOW && !lastOctButton) {
+    octave = (octave == 1) ? 2 : 1;
+    Serial.print("Switched to octave ");
+    Serial.println(octave);
+    lastOctButton = true;
+    delay(200); // delay to prevent multi input from single touch
+  } else if (digitalRead(touchPinOctave) == HIGH) {
+    lastOctButton = false;
+  }
+
+
+  
+  // Check all keys for press (LOW)
+  for (int i = 0; i < 12; i++) {
+    if (digitalRead(pins[i]) == LOW) {
+      keyPressed[i] = true;
+      int freq = baseFreqs[i] * octave;
+      tone(buzzerPin, freq);
+      Serial.print("Playing freq: ");
+      Serial.println(freq);
       delay(200);
+      noTone(buzzerPin);
+    } else {
+      keyPressed[i] = false;
     }
-    else {
-      octive = 1; // Reset to first octave if it exceeds 3
-      isOctiveChanged = true;
-      delay(200);
-    }
-    isOctiveChanged = false;
-    delay(200);
-  } 
-  /*else if (digitalRead(touchPinOctaveTwo) == LOW) {
-    octive = 2;
-    delay(200);
   }
-  else if(digitalRead(touchPinOctaveThree) == LOW){ 
-    octive = 3;
-    delay(200);
-  }
-    */
+    
 
-  // Read if sound button has been pressed
-  int touchState = digitalRead(touchPin);  
 
-  // If the button is pressed, sound the buzzer 
-  if (touchState == LOW) {  
-    Serial.println("Touched!");
-    if(octive == 1){
-      tone(buzzerPin, 500);   
-    } else if(octive == 2){
-      tone(buzzerPin, 1000);  // Different sounds to play based on octave
-    } else if(octive == 3){
-      tone(buzzerPin, 5000); 
-    }
-    delay(200);              // Delay to avoid multiple triggers too quickly
-    noTone(buzzerPin);       
-  } else {
-    noTone(buzzerPin);        // Ensure the buzzer is off
-  }
-
-  delay(50);  
+  delay(50);
 }
+
